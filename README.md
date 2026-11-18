@@ -46,6 +46,9 @@ Round-fit check: the lobe's roundness runs through the can with zero
 friction — flatness is the last remaining variable. If the new print
 comes out flat, the earmotes should sit friction-free.
 
+Outcome, same day: the reprint came out very flat — the fix worked.
+Full installed test still to come.
+
 ### Nov 18, 2026 — the jitter saga
 
 The sweep script (`pi/ear-servo-sweep-2026-11-18.py`) was very jittery —

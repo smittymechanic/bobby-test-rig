@@ -310,14 +310,15 @@ def self_test() -> int:
         if not reply.startswith(("OK", "ERR", "WARN", "BOBBY", "COMMANDS", "EAR")):
             failures += 1
     # 5 deg floor check (Joshua's call 2026-11-20): no command may reach 0.
-    floor_reply = Bridge(dry_run=True).handle("EAR R 0")
+    # Uses WIRED_EAR — the checks must address the ear that's actually wired.
+    floor_reply = Bridge(dry_run=True).handle(f"EAR {WIRED_EAR} 0")
     floor_ok = "5.0°" in floor_reply
-    print(f"ear floor check: 'EAR R 0' -> {floor_reply} ({'OK' if floor_ok else 'FAIL — below 5 deg!'})")
+    print(f"ear floor check: 'EAR {WIRED_EAR} 0' -> {floor_reply} ({'OK' if floor_ok else 'FAIL — below 5 deg!'})")
     failures += 0 if floor_ok else 1
     # 175 deg ceiling check: no command may reach the 180 deg end stop.
-    ceil_reply = Bridge(dry_run=True).handle("EAR R 200")
+    ceil_reply = Bridge(dry_run=True).handle(f"EAR {WIRED_EAR} 200")
     ceil_ok = "175.0°" in ceil_reply
-    print(f"ear ceiling check: 'EAR R 200' -> {ceil_reply} ({'OK' if ceil_ok else 'FAIL — above 175 deg!'})")
+    print(f"ear ceiling check: 'EAR {WIRED_EAR} 200' -> {ceil_reply} ({'OK' if ceil_ok else 'FAIL — above 175 deg!'})")
     failures += 0 if ceil_ok else 1
     print(f"\nself-test: {len(cases)} commands, {failures} unexpected replies")
     return 1 if failures else 0

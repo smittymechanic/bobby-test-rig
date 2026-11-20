@@ -35,10 +35,13 @@ HARDWARE FITTED in v1 — and what is NOT:
   They answer `ERR ... NOT_FITTED` honestly. Do NOT "fix" that by
   faking a move — the whole point of the bench is real readbacks.
 
-Ear angles: bench degrees, 0..180. UP=0, FLAT=90, DROOP=150 (same
-as the bench app). Servo value = deg/90 - 1; duty = 7.5 + value*2.5
-at 50 Hz. Moves are smooth: 0.01 value (~0.9 deg) every 10 ms,
-the step size that fixed the jitter on Nov 18.
+Ear angles: bench degrees, 5..175 (see EAR_MIN_DEG / EAR_MAX_DEG). UP=5, FLAT=90,
+DROOP=150 (same as the bench app, except UP). Servo value =
+deg/90 - 1; duty = 7.5 + value*5.0 at 50 Hz (500..2500 us pulses —
+the AD002 needs the wide range; 1000..2000 us only gave ~90 deg of
+shaft travel, observed Nov 20). Moves are smooth:
+0.01 value (~0.9 deg) every 10 ms, the step size that fixed the
+jitter on Nov 18.
 
 RUN:
   sudo python3 pi/bobby_bridge.py            # listens on :8765
@@ -65,7 +68,17 @@ PWM_HZ = 50
 STEP = 0.01            # servo value per step (~0.9 deg); fine steps = smooth
 DWELL_S = 0.01         # seconds per step (10 ms)
 
-EAR_UP_DEG = 0
+# Software limits, Joshua's call 2026-11-20 (corrected map): the original
+# right-ear AD002 seized with its shaft locked at the 0 deg end stop, so
+# no command may drive an ear to either end stop again. 5 deg = maximum
+# ear BACK, 90 deg = natural rest (FLAT), 175 deg = maximum ear FORWARD
+# (5 deg short of the 180 deg stop; a 180 deg test move was clean, no
+# strain). The bridge clamps everything (UP, numeric degrees, BOTH) to
+# 5..175 deg. Preventative stops, not a remap — rest/zero stays a
+# bench-Config decision on top of this.
+EAR_MIN_DEG = 5.0
+EAR_MAX_DEG = 175.0
+EAR_UP_DEG = 5
 EAR_FLAT_DEG = 90
 EAR_DROOP_DEG = 150
 
@@ -74,8 +87,16 @@ DEFAULT_PORT = 8765
 
 
 def duty_for(value: float) -> float:
-    """Servo value (-1..1) -> duty-cycle percent at 50 Hz."""
-    return 7.5 + value * 2.5
+    """Servo value (-1..1) -> duty-cycle percent at 50 Hz.
+
+    2.5%..12.5% = 500..2500 us pulses. The AD002 (MG90S-class) needs
+    the wide pulse range for its full 180 deg: with the old 5%..10%
+    (1000..2000 us) mapping the horn only turned ~90 deg for a
+    5..175 deg command sweep (observed Nov 20, lobe off, horn
+    watched directly). 90 deg (rest) stays at 1500 us either way, so
+    the lobe reset at 90 deg is unaffected by this change.
+    """
+    return 7.5 + value * 5.0
 
 
 def deg_to_value(deg: float) -> float:
@@ -114,7 +135,7 @@ class EarServo:
 
     def move_to(self, target_deg: float) -> float:
         """Smooth move to target degrees; returns the degrees reached."""
-        target_deg = max(0.0, min(180.0, target_deg))
+        target_deg = max(EAR_MIN_DEG, min(EAR_MAX_DEG, target_deg))
         pwm = self._ensure_pwm()
         start = deg_to_value(self.deg)
         target = deg_to_value(target_deg)
@@ -156,7 +177,7 @@ class Bridge:
         if arg in ("DROOP", "DOWN"):
             return EAR_DROOP_DEG
         try:
-            return max(0.0, min(180.0, float(arg)))
+            return max(EAR_MIN_DEG, min(EAR_MAX_DEG, float(arg)))
         except ValueError:
             return None
 
@@ -263,6 +284,10 @@ def self_test() -> int:
         "EAR BOTH UP",
         "EAR L DROOP",
         "EAR L 200",
+        "EAR R 0",
+        "EAR R -45",
+        "EAR R 180",
+        "EAR R 200",
         "EAR L",
         "PAN FULL L",
         "PAN -105",
@@ -282,6 +307,16 @@ def self_test() -> int:
         print(f"> {cmd!r}\n  {reply}")
         if not reply.startswith(("OK", "ERR", "WARN", "BOBBY", "COMMANDS", "EAR")):
             failures += 1
+    # 5 deg floor check (Joshua's call 2026-11-20): no command may reach 0.
+    floor_reply = Bridge(dry_run=True).handle("EAR R 0")
+    floor_ok = "5.0°" in floor_reply
+    print(f"ear floor check: 'EAR R 0' -> {floor_reply} ({'OK' if floor_ok else 'FAIL — below 5 deg!'})")
+    failures += 0 if floor_ok else 1
+    # 175 deg ceiling check: no command may reach the 180 deg end stop.
+    ceil_reply = Bridge(dry_run=True).handle("EAR R 200")
+    ceil_ok = "175.0°" in ceil_reply
+    print(f"ear ceiling check: 'EAR R 200' -> {ceil_reply} ({'OK' if ceil_ok else 'FAIL — above 175 deg!'})")
+    failures += 0 if ceil_ok else 1
     print(f"\nself-test: {len(cases)} commands, {failures} unexpected replies")
     return 1 if failures else 0
 

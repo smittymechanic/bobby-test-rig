@@ -57,7 +57,7 @@ import sys
 from time import sleep
 
 # --- Bench rig identity (edit here, not in the handlers) -------------------
-WIRED_EAR = "L"        # <-- CHANGE to "R" if the servo in the can now is the RIGHT ear.
+WIRED_EAR = "R"        # <-- CHANGE to "R" if the servo in the can now is the RIGHT ear.
                        # The rig wires ONE ear servo at a time on GPIO18.
 HW_PWM_GPIO = 18       # pin 12, dtoverlay=pwm-2chan (proven Nov 18)
 HW_PWM_CHANNEL = 2     # GPIO18 with dtoverlay=pwm-2chan

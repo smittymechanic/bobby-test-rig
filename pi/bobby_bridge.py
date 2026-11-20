@@ -40,8 +40,8 @@ DROOP=150 (same as the bench app, except UP). Servo value =
 deg/90 - 1; duty = 7.5 + value*5.0 at 50 Hz (500..2500 us pulses —
 the AD002 needs the wide range; 1000..2000 us only gave ~90 deg of
 shaft travel, observed Nov 20). Moves are smooth:
-0.01 value (~0.9 deg) every 10 ms, the step size that fixed the
-jitter on Nov 18.
+0.01 value (~0.9 deg) every 5 ms, the step size that fixed the
+jitter on Nov 18 (dwell halved Nov 20 for a quicker sweep).
 
 RUN:
   sudo python3 pi/bobby_bridge.py            # listens on :8765
@@ -66,7 +66,9 @@ HW_PWM_GPIO = 18       # pin 12, dtoverlay=pwm-2chan (proven Nov 18)
 HW_PWM_CHANNEL = 2     # GPIO18 with dtoverlay=pwm-2chan
 PWM_HZ = 50
 STEP = 0.01            # servo value per step (~0.9 deg); fine steps = smooth
-DWELL_S = 0.01         # seconds per step (10 ms)
+DWELL_S = 0.005        # seconds per step (5 ms) — halved Nov 20 for a
+                       # quicker sweep; step size stays 0.01 so the
+                       # Nov 18 jitter fix (fine steps, hw PWM) still holds
 
 # Software limits, Joshua's call 2026-11-20 (corrected map): the original
 # right-ear AD002 seized with its shaft locked at the 0 deg end stop, so
